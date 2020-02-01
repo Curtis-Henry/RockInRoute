@@ -12,6 +12,10 @@ def get_tm_artists(city, state):
     return get_artist_list(json_data)
 
 def get_artist_list(json_data):
+    # print(json_data)
+    if json_data["page"]["totalElements"] == 0:
+        return []
+
     for elem in json_data["_embedded"]["events"]:
        value = elem["name"]
        if ':' in value:
@@ -29,4 +33,7 @@ def get_artist_list(json_data):
     artists_list  = [key for key in artists.keys()]
     return artists_list
 
-print(get_tm_artists("Jacksonville", "FL"))
+# print(get_tm_artists("Tampa", "FL"))
+print(get_tm_artists("Port St. Lucie", "FL"))
+# print(get_tm_artists("Tampa", "FL"))
+# print(get_tm_artists("Tampa", "FL"))
