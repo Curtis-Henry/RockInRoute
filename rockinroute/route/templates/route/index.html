@@ -1,0 +1,13 @@
+<html>
+    <form action="calculate/" method="POST">
+        {% csrf_token %}
+        <p>Starting Point</p>
+        <input type="text" name="start_point">
+        <p>Ending Point</p>
+        <input type="text" name="end_point">
+        <p></p>
+        <input type="submit" value="submit">
+    </form>
+
+
+</html>
