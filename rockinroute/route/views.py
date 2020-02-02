@@ -43,15 +43,17 @@ def results(request, **kwargs):
     for i in range(0,len(city_state_list)):
         for j in range(0,len(artist_array),3):
             if (artist_array[j+1],artist_array[j+2]) == (city_state_list[i][0], city_state_list[i][1]):
-                num_list.append(i)
+                if i not in num_list:
+                    num_list.append(i)
                 if i in artist_positions:
-                    artist_positions[i].append(artist_array[j])
+                    artist_positions[num_list.index(i)].append(artist_array[j])
                 else:
-                    artist_positions[i] = [artist_array[j]]
-
-    for i in range(0,len(city_state_list)):
-        if i in num_list:
-            marker_str += "&markers=color:red%7clabel:{}%7c{},{}".format(i,city_state_list[i][2],city_state_list[i][3])
+                    artist_positions[num_list.index(i)] = [artist_array[j]]
+    print(num_list)
+    for i in range(0,len(num_list)):
+        print(i)
+        # if i in num_list:
+        marker_str += "&markers=color:red%7clabel:{}%7c{},{}".format(i,city_state_list[num_list[i]][2],city_state_list[num_list[i]][3])
         # artist_positions[i] = 
     
     print(artist_positions)
