@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.http import HttpResponse, HttpResponseRedirect
 from django.conf import settings
 from django.urls import reverse
+from django.contrib import messages
 
 import googlemaps
 from datetime import datetime
@@ -12,19 +13,65 @@ import requests
 import time
 import base64
 import sys
+import urllib.parse
 
 gmaps = googlemaps.Client(key=settings.GOOGLE_MAPS_KEY)
+#is dict
+def results(request, **kwargs):
+    city_str_split = kwargs["city_state_str"][1:].split("||")
+    start_location = kwargs["start_location"][1:]
+    end_location = kwargs["end_location"][1:]
+    album_id = kwargs["album_id"][1:]
+    artist_array = urllib.parse.unquote(kwargs["artist_locations"][1:])
+    artist_array = artist_array.split(":")
+    
+    print(artist_array)
+    artist_positions = {}
+    for i in range(0,len(artist_array),3):
+        print(i)
+        # artist_positions[(artist_array[i][1],artist_array[i][2])].append(artist_array[i][0])
+    # print(artist_positions)
+
+    city_state_list = []
+
+    for i in range(1,len(city_str_split)-2,4):
+        city_state_list.append((city_str_split[i],city_str_split[i+1],city_str_split[i+2],city_str_split[i+3]))
+    print(city_state_list)
+    marker_str = ""
+
+    num_list = []
+    for i in range(0,len(city_state_list)):
+        for j in range(0,len(artist_array),3):
+            if (artist_array[j+1],artist_array[j+2]) == (city_state_list[i][0], city_state_list[i][1]):
+                num_list.append(i)
+                if i in artist_positions:
+                    artist_positions[i].append(artist_array[j])
+                else:
+                    artist_positions[i] = [artist_array[j]]
+
+    for i in range(0,len(city_state_list)):
+        if i in num_list:
+            marker_str += "&markers=color:red%7clabel:{}%7c{},{}".format(i,city_state_list[i][2],city_state_list[i][3])
+        # artist_positions[i] = 
+    
+    print(artist_positions)
+
+    
+
+    img_str = "https://maps.googleapis.com/maps/api/staticmap?center={}&size=600x500&maptype=roadmap{}&key={}".format(urllib.parse.quote(start_location), marker_str,settings.GOOGLE_MAPS_KEY)
+
+    return render(request, 'route/results.html', {"GOOGLE_MAPS_KEY":settings.GOOGLE_MAPS_KEY,"city_state_list":city_state_list,"img_str":img_str,"artist_positions":artist_positions})
+    # return HttpResponse("Hello test")
+    
 
 def index(request):
     return redirect('https://accounts.spotify.com/authorize?response_type=code&client_id='+ str(settings.SOCIAL_AUTH_SPOTIFY_KEY) + '&redirect_uri=' + 'http://127.0.0.1:8000/route/spotify/' + "&scope=playlist-modify-public%20playlist-modify-private")
-    # return HttpResponse("Hello test")
 
 def spotify(request):
     
     # headers = {"Authorization":"Basic {}:{}".format(settings.SOCIAL_AUTH_SPOTIFY_KEY, settings.SOCIAL_AUTH_SPOTIFY_SECRET)}
     data = {"grant_type":"authorization_code", "code":request.GET["code"], "redirect_uri":"http://127.0.0.1:8000/route/spotify/", "client_id":settings.SOCIAL_AUTH_SPOTIFY_KEY, "client_secret":settings.SOCIAL_AUTH_SPOTIFY_SECRET}
     r = requests.post('https://accounts.spotify.com/api/token', data=data)
-    print("home")
     data = json.loads(r.text)
 
     access_token = data["access_token"]
@@ -33,7 +80,7 @@ def spotify(request):
     return redirect('../search?access_token='+access_token)
 
 def search(request):
-    print(request.GET["access_token"])
+    
     return render(request, 'route/index.html', {"access_token": request.GET["access_token"]})
 
 def calculate(request):
@@ -48,25 +95,35 @@ def calculate(request):
 
     user_id = get_user_id(access_token)
     artists_list = get_artists_cities(city_state_list)
-    
+    # print(city_state_list)
     artist_dict = {}
-    for artist in artists_list:
+    for artist,city,state in artists_list:
 
         id = get_artist_id(artist, access_token)
         if id:
-            artist_dict[artist] = id
+            artist_dict[artist] = {"id": id,"city":city,"state":state}
     # print(artist_dict)
 
     song_list = []
 
-    for artist, artist_id in artist_dict.items():
-        get_artist_songs(song_list, artist_id, access_token)
-    print(song_list)
+    artist_locations = []
+    for artist, elems in artist_dict.items():
+        artist_locations.append("{}:{}:{}".format(artist,elems["city"],elems["state"]))
+        get_artist_songs(song_list, elems["id"], access_token)
+    # print(song_list)
+    city_state_str = "||"
+    artist_locations = ":".join(artist_locations)
+    print(urllib.parse.quote(artist_locations))
 
-    album_id = make_playlist(album_name, user_id, access_token)
-    add_songs_to_playlist(album_id, user_id, song_list, access_token)
+    for city,state,point in city_state_list:
+        city_state_str += "{}||{}||{}||{}||".format(city,state,point[0],point[1])
 
-    return HttpResponse("Hello test")
+
+    
+    # album_id = make_playlist(album_name, user_id, access_token)
+    # add_songs_to_playlist(album_id, user_id, song_list, access_token)
+    return redirect(reverse('route:results', kwargs={"album_id": ">" + "1234abD","start_location": ">" + start_location, "end_location": ">" + end_location, "city_state_str": ">" + city_state_str, "artist_locations": ">" + urllib.parse.quote(artist_locations)}))
+    # return HttpResponse("Hello test")
 
 def add_songs_to_playlist(album_id, user_id, song_list, access_token):
     headers = {"Authorization": "Bearer " + access_token,"Accept":"application/json#"}
@@ -80,10 +137,7 @@ def add_songs_to_playlist(album_id, user_id, song_list, access_token):
             if j+count < len(song_list):
                 song_uri_array.append(song_list[count+j][1])
         params = (('uris', ",".join(song_uri_array)),)
-        print(params)
-        # print(len(song_uri_array))
-        # print(",".join(song_uri_array))
-        print(len(song_uri_array))
+
         r = requests.post("https://api.spotify.com/v1/playlists/{}/tracks".format(album_id), params=params, headers=headers)
         print(r.status_code)
         print(r.text)
@@ -93,6 +147,7 @@ def add_songs_to_playlist(album_id, user_id, song_list, access_token):
 def get_user_id(access_token):
     headers = {"Authorization": "Bearer " + access_token}
     r = requests.get("https://api.spotify.com/v1/me", headers=headers)
+    print(r.text)
     return json.loads(r.text)["id"]
 
 def make_playlist(album_name, user_id, access_token):
@@ -153,8 +208,8 @@ def get_cities(start_point, end_point, city_state_list):
 
         for point in poly_points:
             points.append(point)
-
-    for point in points[0:-1:400]:
+    track_list = []
+    for point in points[0:-1:350]:
             lat = point[0]
             lng = point[1]
         
@@ -162,7 +217,7 @@ def get_cities(start_point, end_point, city_state_list):
 
             city = ""
             state = ""
-
+            # print(gmaps.reverse_geocode((lat,lng))[0])
             for component in address_components:
                 if "locality" in component["types"]:
                     city = component["long_name"]
@@ -170,8 +225,10 @@ def get_cities(start_point, end_point, city_state_list):
                 if "administrative_area_level_1" in component["types"]:
                     state = component["short_name"]
 
-            if (city, state) not in city_state_list and (city and state):
-                city_state_list.append((city, state))
+            if (city,state) not in track_list and city and state:
+                city_state_list.append((city, state, (lat,lng)))
+
+            track_list.append((city,state))
 
     return start_location, end_location
 
@@ -217,11 +274,11 @@ def get_artist_list(json_data):
 def get_artists_cities(city_state_list):
     artists_list = []
 
-    for city,state in city_state_list:
+    for city,state,point in city_state_list:
         artists = get_artists(city, state)
         for artist in artists:
             if artist not in artists_list and artist:
-                artists_list.append(artist)
+                artists_list.append((artist,city,state))
 
         time.sleep(1)
 
