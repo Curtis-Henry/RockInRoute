@@ -20,7 +20,6 @@ SOCIAL_AUTH_SPOTIFY_SECRET = os.environ["SOCIAL_AUTH_SPOTIFY_SECRET"]
 # SPOTIFY_REDIRECT_URL = os.envi
 TICKETMASTER_KEY = os.environ["TICKETMASTER_KEY"]
 GOOGLE_MAPS_KEY = os.environ["GOOGLE_MAPS_KEY"]
-SPOTIFY_CODE = os.environ["SPOTIFY_CODE"]
 
 SOCIAL_AUTH_AUTHENTICATION_BACKENDS = (
     'social_core.backends.spotify.SpotifyOAuth2'
@@ -36,6 +35,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'bootstrap4',
     'route'
 ]
 
