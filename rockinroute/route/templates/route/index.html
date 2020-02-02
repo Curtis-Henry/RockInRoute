@@ -1,5 +1,5 @@
 <html>
-    <form action="calculate/" method="POST">
+    <form action="../calculate/" method="POST">
         {% csrf_token %}
         <p>Starting Point</p>
         <input type="text" name="start_point">
@@ -7,6 +7,7 @@
         <input type="text" name="end_point">
         <p></p>
         <input type="submit" value="submit">
+        <input type="hidden" name="access_token" value={{ access_token }}>
     </form>
 
 
